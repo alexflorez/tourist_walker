@@ -63,11 +63,11 @@ class Tourist:
         return self.found
 
 
-def test_one_path(file, shape_neighbors, n_visits):
+def test_one_path(file, n_visits):
     image = io.imread(file, as_gray=True)
     x_size, y_size = 100, 100
     image = transform.resize(image, (x_size, y_size), anti_aliasing=True)
-    space = Environment(image, shape_neighbors)
+    space = Environment(image)
     m, n = space.data.shape
     n_features = m * n
     i, j = 49, 10
@@ -81,11 +81,11 @@ def test_one_path(file, shape_neighbors, n_visits):
     print(f"Tour: ({i}, {j}) Path: {len(tourist.path)}, Cycle: {len(tourist.cycle)}")
 
 
-def test_every_path(file, shape, n_visits):
+def test_every_path(file, n_visits):
     image = io.imread(file, as_gray=True)
     x_size, y_size = 100, 100
     image = transform.resize(image, (x_size, y_size), anti_aliasing=True)
-    space = Environment(image, shape)
+    space = Environment(image)
     # Loop to traverse all the tourist of an image
     m, n = space.data.shape
     for i, j in product(range(m), range(n)):
@@ -101,6 +101,5 @@ def test_every_path(file, shape, n_visits):
 
 if __name__ == "__main__":
     file = "data/image.png"
-    shape = "square"
     n_visits = 3
-    test_one_path(file, shape, n_visits)
+    test_one_path(file, n_visits)
