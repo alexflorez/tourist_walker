@@ -65,7 +65,7 @@ class Tourist:
 
 def test_one_path(file, shape_neighbors, n_visits):
     image = io.imread(file, as_gray=True)
-    x_size, y_size = 10, 10
+    x_size, y_size = 100, 100
     image = transform.resize(image, (x_size, y_size), anti_aliasing=True)
     space = Environment(image, shape_neighbors)
     m, n = space.data.shape
