@@ -1,2 +1,2 @@
-# tourist_walk
+# Tourist walk 
 Implementing tourist walk algorithm
