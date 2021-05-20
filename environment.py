@@ -39,7 +39,7 @@ class Environment:
         x, y = point
         value = self.data[x, y]
         region, shape = self.neighbors(point)
-        indexes = np.argsort(region - value)
+        indexes = np.argsort(abs(region - value))
         return indexes, shape
 
     def neighbors(self, point):
