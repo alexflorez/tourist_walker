@@ -1,107 +1,90 @@
+import numpy as np
 from skimage import io
-from skimage import transform
 from collections import deque
+from collections import defaultdict
 from itertools import product
 
-from environment import Environment, Point
+from environment import Environment
 
 
 class Tourist:
-    def __init__(self, space, mu, position):
+    def __init__(self, space, mu, position, rule='min'):
         self.space = space
         # mu: number of visited cities
         self.mu = mu
         self.position = position
+        self.rule = rule
         self.path = [self.position]
         self.cycle = []
+        # Determine if cycle is found
         self.found = False
         self.visited = deque(maxlen=mu)
         self.visited.append(self.position)
+        # To keep the occurrences of position along the path
+        self.indexes = defaultdict(list)
+        self.indexes[position].append(0)
 
-    def next(self):
-        indexes, shape = self.space.possibles(self.position)
-        for i in indexes:
-            dx, dy = shape[i]
-            x, y = self.position
-            pos = Point(x + dx, y + dy)
+    def next_position(self):
+        positions = self.space.possibles(self.position, self.rule)
+        for pos in positions:
             if pos not in self.visited:
+                self.visited.append(pos)
                 return pos
-        # if it does not find a new position
+        # If it does not find a new position
         return self.position
 
+    def find_indexes(self, point):
+        idx = len(self.path)
+        self.indexes[point].append(idx)
+        return self.indexes[point]
+
     def step(self):
-        # if it was already found a cycle
-        if self.found:
-            return self.found
+        point = self.next_position()
+        # It can't move to another position, cycle is empty
+        if self.position == point:
+            self.found = True
+            return
 
-        pos = self.next()
-        if self.position == pos:
-            return self.found
-        self.position = pos
-        self.visited.append(pos)
-        if pos not in self.path:
-            if pos not in self.cycle:
-                self.path.extend(self.cycle)
-                self.cycle.clear()
-            self.path.append(pos)
-        else:
-            # last occurrence of element
-            k = self.path[::-1].index(pos)
-            # updating to actual index
-            k = len(self.path) -k - 1
-            if pos in self.cycle and pos == self.cycle[0]:
+        indexes = self.find_indexes(point)
+        # check presence of cycle
+        for ix in indexes[:-1]:
+            cycle = self.path[ix:]
+            elems = len(cycle)
+            subpath = self.path[ix - elems: ix]
+            if cycle == subpath:
+                self.cycle = cycle
                 self.found = True
-            elif not self.cycle:
-                self.cycle.append(pos)
-            elif self.cycle[-1] == self.path[k - 1]:
-                self.cycle.append(pos)
-            else:
-                # it was found an element that breaks the possible cycle
-                self.path.extend(self.cycle)
-                self.path.append(pos)
-                self.cycle.clear()
-        return self.found
+                return
+
+        self.position = point
+        self.path.append(self.position)
+
+    def traverse(self):
+        while not self.found:
+            self.step()
+        cycle = len(self.cycle)
+        path = len(self.path) - 2 * cycle
+        return path, cycle
 
 
-def test_one_path(file, n_visits):
-    image = read(file)
-    space = Environment(image)
+def traverse_environment(space, mu, rule="min"):
     m, n = space.data.shape
-    n_features = m * n
-    i, j = 49, 10
-    point = Point(i, j)
-    tourist = Tourist(space, n_visits, point)
-    for k in range(n_features):
-        tourist.step()
-        if tourist.found:
-            break
-    print(f"{tourist.found} in {k} iterations")
-    print(f"Tour: ({i}, {j}) Path: {len(tourist.path)}, Cycle: {len(tourist.cycle)}")
+    n_points = m * n
+    measures = 2
+    transient_cycle = np.empty((n_points, measures), dtype=int)
+    for k, (i, j) in enumerate(product(range(m), range(n))):
+        point = (i, j)
+        tourist = Tourist(space, mu, point, rule)
+        path, cycle = tourist.traverse()
+        transient_cycle[k] = [path, cycle]
+    return transient_cycle
 
-
-def test_every_path(file, n_visits):
-    image = read(file)
-    space = Environment(image)
-    # Loop to traverse all the tourist of an image
-    m, n = space.data.shape
-    for i, j in product(range(m), range(n)):
-        point = Point(i, j)
-        tourist = Tourist(space, n_visits, point)
-        for k in range(m*n):
-            tourist.step()
-            if tourist.found:
-                break
-        print(f"{tourist.found} in {k} iterations")
-        print(f"Tour: ({i}, {j}) Path: {len(tourist.path)}, Cycle: {len(tourist.cycle)}")
-
-
-def read(filename):
-    image = io.imread(filename, as_gray=True)
-    x_size, y_size = 100, 100
-    image = transform.resize(image, (x_size, y_size), preserve_range=True, anti_aliasing=False, order=0).astype('uint8')
-    return image
 
 if __name__ == "__main__":
     file = "data/image.png"
-    n_visits = 3
-    test_every_path(file, n_visits)
+    mu_visits = 2
+    rule_dir = "max"
+    image = io.imread(file)
+    env = Environment(image)
+    dt = traverse_environment(env, mu_visits, rule_dir)
+    print(dt)
